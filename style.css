@@ -1,0 +1,10 @@
+/* This makes the "Who's That Pokemon" silhouette effect */
+.silhouette {
+  filter: brightness(0);
+  transition: filter 0.5s ease;
+  width: 300px;
+}
+
+.revealed {
+  filter: brightness(1);
+}
