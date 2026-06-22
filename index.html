@@ -1,7 +1,281 @@
-<div class="game-header">
-  <h1>Kanto Dex Challenge: <span id="score">0</span>/151</h1>
-  <input type="text" id="guess-input" placeholder="Start typing Pokémon names..." autofocus>
-</div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>151 Pokémon Guessing Game</title>
+  <style>
+    :root {
+      --bg-color: #f4f4f9;
+      --card-bg: #ffffff;
+      --card-caught: #e0f7fa;
+      --card-missed: #ffebee;
+      --text-color: #333;
+      --primary: #ef5350;
+      --border-radius: 8px;
+    }
 
-<div id="pokedex-grid" class="grid-container">
-</div>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      background-color: var(--primary);
+      color: white;
+      width: 100%;
+      padding: 20px 0;
+      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      margin: 0 0 10px 0;
+      font-size: 1.8rem;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #guess-input {
+      padding: 10px 15px;
+      font-size: 1.2rem;
+      border: none;
+      border-radius: 20px;
+      width: 250px;
+      outline: none;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .stats {
+      font-size: 1.1rem;
+      font-weight: bold;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    button {
+      padding: 8px 16px;
+      background-color: #fff;
+      color: var(--primary);
+      border: none;
+      border-radius: 20px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    button:hover {
+      background-color: #ffebee;
+    }
+
+    main {
+      padding: 30px 20px;
+      width: 100%;
+      max-width: 1200px;
+      box-sizing: border-box;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 15px;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border-radius: var(--border-radius);
+      padding: 20px 10px;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      border: 1px solid #e0e0e0;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 80px;
+    }
+
+    .card.caught {
+      background-color: var(--card-caught);
+      border-color: #00bcd4;
+      transform: scale(1.05);
+      box-shadow: 0 4px 8px rgba(0,188,212,0.2);
+    }
+
+    .card.missed {
+      background-color: var(--card-missed);
+      border-color: #ef5350;
+      color: #c62828;
+    }
+
+    .poke-id {
+      font-size: 0.9rem;
+      color: #888;
+      margin-bottom: 5px;
+    }
+
+    .poke-name {
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Who's That Pokémon?</h1>
+    <div class="controls">
+      <input type="text" id="guess-input" placeholder="Enter Pokémon name..." autocomplete="off">
+      <div class="stats">
+        <span id="progress">0 / 151 Found</span>
+        <button id="give-up-btn">Give Up</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="grid" id="pokedex-grid">
+      </div>
+  </main>
+
+  <script>
+    const pokemonList = [
+      "Bulbasaur", "Ivysaur", "Venusaur", "Charmander", "Charmeleon", "Charizard", "Squirtle", "Wartortle", "Blastoise", "Caterpie",
+      "Metapod", "Butterfree", "Weedle", "Kakuna", "Beedrill", "Pidgey", "Pidgeotto", "Pidgeot", "Rattata", "Raticate",
+      "Spearow", "Fearow", "Ekans", "Arbok", "Pikachu", "Raichu", "Sandshrew", "Sandslash", "Nidoran♀", "Nidorina",
+      "Nidoqueen", "Nidoran♂", "Nidorino", "Nidoking", "Clefairy", "Clefable", "Vulpix", "Ninetales", "Jigglypuff", "Wigglytuff",
+      "Zubat", "Golbat", "Oddish", "Gloom", "Vileplume", "Paras", "Parasect", "Venonat", "Venomoth", "Diglett",
+      "Dugtrio", "Meowth", "Persian", "Psyduck", "Golduck", "Mankey", "Primeape", "Growlithe", "Arcanine", "Poliwag",
+      "Poliwhirl", "Poliwrath", "Abra", "Kadabra", "Alakazam", "Machop", "Machoke", "Machamp", "Bellsprout", "Weepinbell",
+      "Victreebel", "Tentacool", "Tentacruel", "Geodude", "Graveler", "Golem", "Ponyta", "Rapidash", "Slowpoke", "Slowbro",
+      "Magnemite", "Magneton", "Farfetch'd", "Doduo", "Dodrio", "Seel", "Dewgong", "Grimer", "Muk", "Shellder",
+      "Cloyster", "Gastly", "Haunter", "Gengar", "Onix", "Drowzee", "Hypno", "Krabby", "Kingler", "Voltorb",
+      "Electrode", "Exeggcute", "Exeggutor", "Cubone", "Marowak", "Hitmonlee", "Hitmonchan", "Lickitung", "Koffing", "Weezing",
+      "Rhyhorn", "Rhydon", "Chansey", "Tangela", "Kangaskhan", "Horsea", "Seadra", "Goldeen", "Seaking", "Staryu",
+      "Starmie", "Mr. Mime", "Scyther", "Jynx", "Electabuzz", "Magmar", "Pinsir", "Tauros", "Magikarp", "Gyarados",
+      "Lapras", "Ditto", "Eevee", "Vaporeon", "Jolteon", "Flareon", "Porygon", "Omanyte", "Omastar", "Kabuto",
+      "Kabutops", "Aerodactyl", "Snorlax", "Articuno", "Zapdos", "Moltres", "Dratini", "Dragonair", "Dragonite", "Mewtwo", "Mew"
+    ];
+
+    let caughtCount = 0;
+    const grid = document.getElementById('pokedex-grid');
+    const guessInput = document.getElementById('guess-input');
+    const progressText = document.getElementById('progress');
+    const giveUpBtn = document.getElementById('give-up-btn');
+    
+    // Create state array
+    let pokedex = pokemonList.map((name, index) => ({
+      id: index + 1,
+      name: name,
+      caught: false,
+      // Create a normalized string for easier matching (no spaces, punctuation, lowercase)
+      matchName: normalizeString(name)
+    }));
+
+    function normalizeString(str) {
+      let normalized = str.toLowerCase().replace(/[^a-z0-9]/g, '');
+      // Handle special edge cases for user input friendliness
+      if (str === "Nidoran♀") return "nidoranf";
+      if (str === "Nidoran♂") return "nidoranm";
+      return normalized;
+    }
+
+    // Initialize Grid
+    function renderGrid() {
+      grid.innerHTML = '';
+      pokedex.forEach(pokemon => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.id = `card-${pokemon.id}`;
+        
+        card.innerHTML = `
+          <div class="poke-id">#${String(pokemon.id).padStart(3, '0')}</div>
+          <div class="poke-name" id="name-${pokemon.id}">???</div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // Handle Guesses
+    guessInput.addEventListener('keyup', function(e) {
+      if (e.key === 'Enter') {
+        const guess = guessInput.value.trim();
+        if (!guess) return;
+
+        // Clean user input the same way we cleaned the database
+        let cleanedGuess = normalizeString(guess);
+        // Map common "nidoran f/m" inputs to the internal match string
+        if (cleanedGuess === "nidoranf" || cleanedGuess === "nidoranfemale") cleanedGuess = "nidoranf";
+        if (cleanedGuess === "nidoranm" || cleanedGuess === "nidoranmale") cleanedGuess = "nidoranm";
+
+        const matchIndex = pokedex.findIndex(p => p.matchName === cleanedGuess);
+
+        if (matchIndex !== -1 && !pokedex[matchIndex].caught) {
+          // Catch successful
+          pokedex[matchIndex].caught = true;
+          caughtCount++;
+          
+          // Update UI
+          const card = document.getElementById(`card-${pokedex[matchIndex].id}`);
+          const nameSpan = document.getElementById(`name-${pokedex[matchIndex].id}`);
+          
+          card.classList.add('caught');
+          nameSpan.textContent = pokedex[matchIndex].name;
+          progressText.textContent = `${caughtCount} / 151 Found`;
+          
+          // Clear input box immediately
+          guessInput.value = '';
+
+          // Scroll newly caught card into view smoothly
+          card.scrollIntoView({ behavior: "smooth", block: "center" });
+
+          // Check Win Condition
+          if (caughtCount === 151) {
+            setTimeout(() => alert('Congratulations! You caught all 151 Pokémon!'), 500);
+            guessInput.disabled = true;
+          }
+        } else {
+          // Optional: Add a shake animation class here if the guess is wrong or already caught
+          guessInput.value = ''; // Auto clear on wrong guess too for faster typing
+        }
+      }
+    });
+
+    // Give Up Button
+    giveUpBtn.addEventListener('click', () => {
+      if(confirm('Are you sure you want to give up and reveal the rest?')) {
+        pokedex.forEach(pokemon => {
+          if (!pokemon.caught) {
+            const card = document.getElementById(`card-${pokemon.id}`);
+            const nameSpan = document.getElementById(`name-${pokemon.id}`);
+            card.classList.add('missed');
+            nameSpan.textContent = pokemon.name;
+          }
+        });
+        guessInput.disabled = true;
+        giveUpBtn.disabled = true;
+      }
+    });
+
+    // Start App
+    renderGrid();
+    guessInput.focus();
+  </script>
+</body>
+</html>
