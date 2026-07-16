@@ -142,14 +142,28 @@
 
     /* Phones */
     @media (max-width: 480px) {
-      header { padding: 10px 10px; }
-      .header-top { gap: 6px; }
-      .pokeball { width: 42px; height: 42px; border-width: 3px; }
-      .pokeball::after { width: 13px; height: 13px; border-width: 3px; }
-      h1 { font-size: 1.05rem; }
-      .header-controls-right { gap: 6px; }
-      .timer-display { padding: 5px 9px; font-size: 0.7rem; }
-      #mute-btn { width: 30px; height: 30px; font-size: 1rem; }
+      header { padding: 8px 8px; }
+      .header-top { gap: 6px; margin-bottom: 8px; }
+      .pokeball { width: 38px; height: 38px; border-width: 3px; }
+      .pokeball::after { width: 12px; height: 12px; border-width: 3px; }
+      h1 {
+        font-size: 1rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .header-controls-right { gap: 5px; }
+      .timer-display { padding: 4px 8px; font-size: 0.65rem; }
+      #mute-btn { width: 28px; height: 28px; font-size: 0.95rem; }
+    }
+
+    /* Very narrow phones */
+    @media (max-width: 360px) {
+      .pokeball { width: 32px; height: 32px; border-width: 3px; }
+      .pokeball::after { width: 10px; height: 10px; border-width: 2px; }
+      h1 { font-size: 0.85rem; }
+      .timer-display { padding: 3px 6px; font-size: 0.6rem; }
+      #mute-btn { width: 24px; height: 24px; font-size: 0.85rem; }
     }
 
     .controls {
@@ -281,6 +295,136 @@
       .poke-name { font-size: 0.85rem; }
       .poke-id { font-size: 0.75rem; }
     }
+
+    /* Pulse highlight when a guess matches an already-caught Pokémon */
+    @keyframes already-found-pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); transform: scale(1); }
+      35%  { box-shadow: 0 0 0 10px rgba(255, 193, 7, 0); transform: scale(1.08); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); transform: scale(1); }
+    }
+
+    .card.already-found-pulse {
+      animation: already-found-pulse 1.4s ease-out;
+      border-color: #ffc107;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* --- Custom modal (replaces native confirm()/alert()) --- */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(20, 20, 30, 0.55);
+      backdrop-filter: blur(2px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      box-sizing: border-box;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .modal-overlay.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-overlay.hidden {
+      display: none;
+    }
+
+    .modal-box {
+      background: #ffffff;
+      border-radius: 20px;
+      max-width: 380px;
+      width: 100%;
+      padding: 30px 26px 24px;
+      text-align: center;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.35);
+      transform: scale(0.85) translateY(14px);
+      transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+      border-top: 6px solid var(--primary);
+    }
+
+    .modal-overlay.visible .modal-box {
+      transform: scale(1) translateY(0);
+    }
+
+    .modal-box.win {
+      border-top-color: #ffca28;
+    }
+
+    .modal-icon {
+      font-size: 3rem;
+      line-height: 1;
+      margin-bottom: 10px;
+    }
+
+    .modal-box.win .modal-icon {
+      animation: modal-icon-bounce 0.9s ease-in-out infinite;
+    }
+
+    @keyframes modal-icon-bounce {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-8px) rotate(-6deg); }
+    }
+
+    .modal-box h2 {
+      margin: 0 0 10px;
+      font-size: 1.35rem;
+      color: var(--text-color);
+    }
+
+    .modal-box p {
+      margin: 0 0 22px;
+      font-size: 0.98rem;
+      color: #666;
+      line-height: 1.5;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .modal-btn {
+      padding: 11px 22px;
+      border-radius: 24px;
+      border: none;
+      font-weight: bold;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .modal-btn:active {
+      transform: scale(0.95);
+    }
+
+    .modal-btn-primary {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 6px 14px rgba(239, 83, 80, 0.35);
+    }
+
+    .modal-btn-primary:hover {
+      background: #e33d38;
+    }
+
+    .modal-btn-secondary {
+      background: #f0f0f0;
+      color: #555;
+    }
+
+    .modal-btn-secondary:hover {
+      background: #e2e2e2;
+    }
   </style>
 </head>
 <body>
@@ -307,6 +451,16 @@
     <div class="grid" id="pokedex-grid">
       </div>
   </main>
+
+  <div class="modal-overlay hidden" id="modal-overlay">
+    <div class="modal-box" id="modal-box">
+      <div class="modal-icon" id="modal-icon">❓</div>
+      <h2 id="modal-title"></h2>
+      <p id="modal-message"></p>
+      <div class="modal-actions" id="modal-actions"></div>
+    </div>
+  </div>
+
 
   <script>
     const pokemonList = [
@@ -386,6 +540,45 @@
       muteBtn.setAttribute('aria-label', muteBtn.title);
     });
 
+    // --- Custom modal (replaces native confirm()/alert()) ---
+    const modalOverlay = document.getElementById('modal-overlay');
+    const modalBox = document.getElementById('modal-box');
+    const modalIcon = document.getElementById('modal-icon');
+    const modalTitle = document.getElementById('modal-title');
+    const modalMessage = document.getElementById('modal-message');
+    const modalActions = document.getElementById('modal-actions');
+
+    function showModal({ icon, title, message, buttons, variant }) {
+      return new Promise(resolve => {
+        modalIcon.textContent = icon;
+        modalTitle.textContent = title;
+        modalMessage.textContent = message;
+        modalBox.className = 'modal-box' + (variant ? ` ${variant}` : '');
+        modalActions.innerHTML = '';
+
+        buttons.forEach(btnConfig => {
+          const btn = document.createElement('button');
+          btn.className = `modal-btn ${btnConfig.primary ? 'modal-btn-primary' : 'modal-btn-secondary'}`;
+          btn.textContent = btnConfig.label;
+          btn.addEventListener('click', () => {
+            closeModal();
+            resolve(btnConfig.value);
+          });
+          modalActions.appendChild(btn);
+        });
+
+        modalOverlay.classList.remove('hidden');
+        // Force reflow so the fade/scale-in transition replays every time
+        void modalOverlay.offsetWidth;
+        modalOverlay.classList.add('visible');
+      });
+    }
+
+    function closeModal() {
+      modalOverlay.classList.remove('visible');
+      setTimeout(() => modalOverlay.classList.add('hidden'), 250);
+    }
+
     // Create state array
     let pokedex = pokemonList.map((name, index) => ({
       id: index + 1,
@@ -453,6 +646,37 @@
       return match ? [match] : [];
     }
 
+    // Return already-caught Pokémon that a cleaned guess refers to (for the "already found" nudge)
+    function findAlreadyCaught(cleanedGuess) {
+      if (NIDORAN_ALIASES.has(cleanedGuess)) {
+        return pokedex.filter(p =>
+          (p.matchName === "nidoranf" || p.matchName === "nidoranm") && p.caught
+        );
+      }
+      const match = pokedex.find(p => p.matchName === cleanedGuess && p.caught);
+      return match ? [match] : [];
+    }
+
+    // Briefly pulse-highlight cards so the player knows they've already found them
+    function highlightAlreadyFound(pokemonArr) {
+      let lastCard = null;
+      pokemonArr.forEach(pokemon => {
+        const card = document.getElementById(`card-${pokemon.id}`);
+        card.classList.remove('already-found-pulse');
+        void card.offsetWidth; // restart animation even if triggered again quickly
+        card.classList.add('already-found-pulse');
+        lastCard = card;
+      });
+      if (lastCard) {
+        lastCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => {
+          pokemonArr.forEach(pokemon => {
+            document.getElementById(`card-${pokemon.id}`).classList.remove('already-found-pulse');
+          });
+        }, 1500);
+      }
+    }
+
     // Handle Guesses
     guessInput.addEventListener('keyup', function(e) {
       if (e.key === 'Enter') {
@@ -474,30 +698,48 @@
           });
 
           progressText.textContent = `${caughtCount} / 151 Found`;
-
-          // Clear input box immediately
           guessInput.value = '';
-
-          // Scroll the (last) newly caught card into view smoothly
           lastCard.scrollIntoView({ behavior: "smooth", block: "center" });
 
           // Check Win Condition
           if (caughtCount === 151) {
             stopTimer();
             const finalTime = formatTime(elapsedSeconds);
-            setTimeout(() => alert(`Congratulations! You caught all 151 Pokémon in ${finalTime}!`), 500);
             guessInput.disabled = true;
+            setTimeout(() => {
+              showModal({
+                icon: '🎉',
+                title: 'All 151 Caught!',
+                message: `You completed the Pokédex in ${finalTime}. Great job, Trainer!`,
+                buttons: [{ label: 'Nice!', value: true, primary: true }],
+                variant: 'win'
+              });
+            }, 500);
           }
         } else {
-          // Optional: Add a shake animation class here if the guess is wrong or already caught
-          guessInput.value = ''; // Auto clear on wrong guess too for faster typing
+          // Guess didn't match anything new — check if it's a Pokémon already found
+          const alreadyCaught = findAlreadyCaught(cleanedGuess);
+          if (alreadyCaught.length > 0) {
+            highlightAlreadyFound(alreadyCaught);
+          }
+          guessInput.value = ''; // Auto clear on wrong/duplicate guess too for faster typing
         }
       }
     });
 
     // Give Up Button
-    giveUpBtn.addEventListener('click', () => {
-      if(confirm('Are you sure you want to give up and reveal the rest?')) {
+    giveUpBtn.addEventListener('click', async () => {
+      const confirmed = await showModal({
+        icon: '⚠️',
+        title: 'Give up?',
+        message: 'This will reveal every remaining Pokémon and end the game. This action can\'t be undone.',
+        buttons: [
+          { label: 'Cancel', value: false, primary: false },
+          { label: 'Give Up', value: true, primary: true }
+        ]
+      });
+
+      if (confirmed) {
         stopTimer();
         pokedex.forEach(pokemon => {
           if (!pokemon.caught) {
