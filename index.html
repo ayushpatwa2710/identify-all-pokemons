@@ -30,7 +30,8 @@
       background-color: var(--primary);
       color: white;
       width: 100%;
-      padding: 20px 0;
+      padding: 20px 60px;
+      box-sizing: border-box;
       text-align: center;
       position: sticky;
       top: 0;
@@ -41,6 +42,67 @@
     h1 {
       margin: 0 0 10px 0;
       font-size: 1.8rem;
+    }
+
+    /* CSS-drawn Pokéball logo, top-left of the header */
+    .pokeball {
+      position: absolute;
+      top: 18px;
+      left: 20px;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: linear-gradient(
+        to bottom,
+        #ee1515 0%, #ee1515 46%,
+        #222 46%, #222 54%,
+        #fff 54%, #fff 100%
+      );
+      border: 3px solid #222;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      animation: pokeball-spin-in 0.6s ease-out;
+    }
+
+    .pokeball::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 12px;
+      height: 12px;
+      background: #fff;
+      border: 3px solid #222;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    @keyframes pokeball-spin-in {
+      from { transform: rotate(-180deg) scale(0.5); opacity: 0; }
+      to { transform: rotate(0deg) scale(1); opacity: 1; }
+    }
+
+    /* Mute/unmute toggle, top-right of the header */
+    #mute-btn {
+      position: absolute;
+      top: 14px;
+      right: 20px;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      background-color: rgba(255,255,255,0.15);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      font-size: 1.3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    #mute-btn:hover {
+      background-color: rgba(255,255,255,0.3);
     }
 
     .controls {
@@ -158,6 +220,8 @@
 <body>
 
   <header>
+    <div class="pokeball" title="Pokéball" aria-hidden="true"></div>
+    <button id="mute-btn" title="Mute sound" aria-label="Mute sound">🔊</button>
     <h1>Who's That Pokémon?</h1>
     <div class="controls">
       <input type="text" id="guess-input" placeholder="Enter Pokémon name..." autocomplete="off">
@@ -193,15 +257,37 @@
     ];
 
     let caughtCount = 0;
+    let isMuted = false;
     const grid = document.getElementById('pokedex-grid');
     const guessInput = document.getElementById('guess-input');
     const progressText = document.getElementById('progress');
     const giveUpBtn = document.getElementById('give-up-btn');
+    const muteBtn = document.getElementById('mute-btn');
 
     // Sprite source: PokeAPI's official artwork, keyed by National Dex ID (1-151 = Gen 1)
     function spriteUrl(id) {
       return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
     }
+
+    // Cry source: PokeAPI's cries repo, also keyed by National Dex ID
+    function cryUrl(id) {
+      return `https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest/${id}.ogg`;
+    }
+
+    function playCry(id) {
+      if (isMuted) return;
+      const audio = new Audio(cryUrl(id));
+      audio.volume = 0.6;
+      // Ignore playback errors (e.g. browser blocks autoplay before any user interaction)
+      audio.play().catch(() => {});
+    }
+
+    muteBtn.addEventListener('click', () => {
+      isMuted = !isMuted;
+      muteBtn.textContent = isMuted ? '🔇' : '🔊';
+      muteBtn.title = isMuted ? 'Unmute sound' : 'Mute sound';
+      muteBtn.setAttribute('aria-label', muteBtn.title);
+    });
 
     // Create state array
     let pokedex = pokemonList.map((name, index) => ({
@@ -215,8 +301,8 @@
     function normalizeString(str) {
       let normalized = str.toLowerCase().replace(/[^a-z0-9]/g, '');
       // Handle special edge cases for user input friendliness
-      if (str === "Nidoran♀") return "nidoran";
-      if (str === "Nidoran♂") return "nidoran";
+      if (str === "Nidoran♀") return "nidoranf";
+      if (str === "Nidoran♂") return "nidoranm";
       return normalized;
     }
 
@@ -254,35 +340,49 @@
       return card;
     }
 
+    // Any of these inputs typed for Nidoran should unlock BOTH the ♀ and ♂ forms at once
+    const NIDORAN_ALIASES = new Set([
+      "nidoran", "nidoranf", "nidoranm", "nidoranfemale", "nidoranmale"
+    ]);
+
+    // Return the list of still-uncaught Pokémon that a cleaned guess matches
+    function findMatches(cleanedGuess) {
+      if (NIDORAN_ALIASES.has(cleanedGuess)) {
+        return pokedex.filter(p =>
+          (p.matchName === "nidoranf" || p.matchName === "nidoranm") && !p.caught
+        );
+      }
+      const match = pokedex.find(p => p.matchName === cleanedGuess && !p.caught);
+      return match ? [match] : [];
+    }
+
     // Handle Guesses
     guessInput.addEventListener('keyup', function(e) {
       if (e.key === 'Enter') {
         const guess = guessInput.value.trim();
         if (!guess) return;
 
-        // Clean user input the same way we cleaned the database
-        let cleanedGuess = normalizeString(guess);
-        // Map common "nidoran f/m" inputs to the internal match string
-        if (cleanedGuess === "nidoranf" || cleanedGuess === "nidoranfemale") cleanedGuess = "nidoranf";
-        if (cleanedGuess === "nidoranm" || cleanedGuess === "nidoranmale") cleanedGuess = "nidoranm";
+        const cleanedGuess = normalizeString(guess);
+        const matches = findMatches(cleanedGuess);
 
-        const matchIndex = pokedex.findIndex(p => p.matchName === cleanedGuess);
+        if (matches.length > 0) {
+          let lastCard = null;
+          matches.forEach(pokemon => {
+            pokemon.caught = true;
+            caughtCount++;
+            const card = revealCard(pokemon);
+            card.classList.add('caught');
+            playCry(pokemon.id);
+            lastCard = card;
+          });
 
-        if (matchIndex !== -1 && !pokedex[matchIndex].caught) {
-          // Catch successful
-          pokedex[matchIndex].caught = true;
-          caughtCount++;
-
-          // Update UI (reveals real artwork by adding the .caught class)
-          const card = revealCard(pokedex[matchIndex]);
-          card.classList.add('caught');
           progressText.textContent = `${caughtCount} / 151 Found`;
 
           // Clear input box immediately
           guessInput.value = '';
 
-          // Scroll newly caught card into view smoothly
-          card.scrollIntoView({ behavior: "smooth", block: "center" });
+          // Scroll the (last) newly caught card into view smoothly
+          lastCard.scrollIntoView({ behavior: "smooth", block: "center" });
 
           // Check Win Condition
           if (caughtCount === 151) {
