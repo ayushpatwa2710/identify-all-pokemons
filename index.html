@@ -99,7 +99,7 @@
     .card {
       background-color: var(--card-bg);
       border-radius: var(--border-radius);
-      padding: 20px 10px;
+      padding: 15px 10px;
       text-align: center;
       box-shadow: 0 2px 5px rgba(0,0,0,0.05);
       border: 1px solid #e0e0e0;
@@ -128,6 +128,25 @@
       font-size: 0.9rem;
       color: #888;
       margin-bottom: 5px;
+    }
+
+    .poke-img {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+      margin-bottom: 5px;
+      /* Unidentified state: rendered as a solid black silhouette */
+      filter: brightness(0) saturate(100%);
+      opacity: 0.85;
+      transition: filter 0.4s ease, opacity 0.4s ease, transform 0.4s ease;
+    }
+
+    /* Once caught (or revealed via Give Up), show the real artwork */
+    .card.caught .poke-img,
+    .card.missed .poke-img {
+      filter: none;
+      opacity: 1;
+      transform: scale(1.05);
     }
 
     .poke-name {
@@ -178,7 +197,12 @@
     const guessInput = document.getElementById('guess-input');
     const progressText = document.getElementById('progress');
     const giveUpBtn = document.getElementById('give-up-btn');
-    
+
+    // Sprite source: PokeAPI's official artwork, keyed by National Dex ID (1-151 = Gen 1)
+    function spriteUrl(id) {
+      return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
+    }
+
     // Create state array
     let pokedex = pokemonList.map((name, index) => ({
       id: index + 1,
@@ -203,13 +227,31 @@
         const card = document.createElement('div');
         card.className = 'card';
         card.id = `card-${pokemon.id}`;
-        
+
         card.innerHTML = `
           <div class="poke-id">#${String(pokemon.id).padStart(3, '0')}</div>
+          <img
+            class="poke-img"
+            id="img-${pokemon.id}"
+            src="${spriteUrl(pokemon.id)}"
+            alt="Mystery Pokémon silhouette"
+            loading="lazy"
+            onerror="this.style.display='none'"
+          >
           <div class="poke-name" id="name-${pokemon.id}">???</div>
         `;
         grid.appendChild(card);
       });
+    }
+
+    // Reveal a single card's real artwork + name
+    function revealCard(pokemon) {
+      const card = document.getElementById(`card-${pokemon.id}`);
+      const img = document.getElementById(`img-${pokemon.id}`);
+      const nameSpan = document.getElementById(`name-${pokemon.id}`);
+      img.alt = pokemon.name;
+      nameSpan.textContent = pokemon.name;
+      return card;
     }
 
     // Handle Guesses
@@ -230,15 +272,12 @@
           // Catch successful
           pokedex[matchIndex].caught = true;
           caughtCount++;
-          
-          // Update UI
-          const card = document.getElementById(`card-${pokedex[matchIndex].id}`);
-          const nameSpan = document.getElementById(`name-${pokedex[matchIndex].id}`);
-          
+
+          // Update UI (reveals real artwork by adding the .caught class)
+          const card = revealCard(pokedex[matchIndex]);
           card.classList.add('caught');
-          nameSpan.textContent = pokedex[matchIndex].name;
           progressText.textContent = `${caughtCount} / 151 Found`;
-          
+
           // Clear input box immediately
           guessInput.value = '';
 
@@ -262,10 +301,8 @@
       if(confirm('Are you sure you want to give up and reveal the rest?')) {
         pokedex.forEach(pokemon => {
           if (!pokemon.caught) {
-            const card = document.getElementById(`card-${pokemon.id}`);
-            const nameSpan = document.getElementById(`name-${pokemon.id}`);
+            const card = revealCard(pokemon);
             card.classList.add('missed');
-            nameSpan.textContent = pokemon.name;
           }
         });
         guessInput.disabled = true;
