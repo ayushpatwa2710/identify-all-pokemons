@@ -215,8 +215,8 @@
     function normalizeString(str) {
       let normalized = str.toLowerCase().replace(/[^a-z0-9]/g, '');
       // Handle special edge cases for user input friendliness
-      if (str === "Nidoran♀") return "nidoranf";
-      if (str === "Nidoran♂") return "nidoranm";
+      if (str === "Nidoran♀") return "nidoran";
+      if (str === "Nidoran♂") return "nidoran";
       return normalized;
     }
 
